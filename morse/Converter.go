@@ -32,7 +32,7 @@ func New(inputFilename, outputFilename string) (*Converter, error) {
 		return nil, err
 	}
 
-	mappings, err := mapping.NewMapper("internal/symbol2morse.json")
+	mappings, err := mapping.NewMapper("morse/mapping/symbol2morse.json")
 	if err != nil {
 		return nil, fmt.Errorf("loading morse mappings: %w", err)
 	}

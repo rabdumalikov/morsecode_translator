@@ -18,9 +18,15 @@ func (p *Encoder) Encode(text string) string {
 	var encodedWords []string
 
 	for _, word := range words {
+		if word == "" {
+			// special handling for consequetive spaces
+			word = " "
+		}
+
 		var encodedWord []string
 
 		for _, char := range word {
+
 			upperChar := strings.ToUpper(string(char))
 			value, ok := p.mapper.SymbolToMorse(upperChar)
 			if ok {
@@ -29,7 +35,10 @@ func (p *Encoder) Encode(text string) string {
 				encodedWord = append(encodedWord, string(char))
 			}
 		}
-		encodedWords = append(encodedWords, strings.Join(encodedWord, " "))
+
+		if len(encodedWord) != 0 {
+			encodedWords = append(encodedWords, strings.Join(encodedWord, " "))
+		}
 	}
 
 	return strings.Join(encodedWords, "/") + "//"

@@ -49,19 +49,19 @@ func NewFileReader(filename string, isMorse bool) (Reader, error) {
 	scanner := bufio.NewScanner(file)
 	if isMorse {
 		scanner.Split(scanMorseEndLine)
+	} else {
+		scanner.Split(scanTxtEndLine)
 	}
 
 	return &FileReader{file: file, scanner: scanner}, nil
 }
 
-func scanMorseEndLine(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	separator := "//"
-
+func scanDelimitedLine(data []byte, atEOF bool, separator []byte) (advance int, token []byte, err error) {
 	if atEOF && len(data) == 0 {
 		return 0, nil, nil
 	}
-	if i := bytes.Index(data, []byte(separator)); i >= 0 {
-		// We have a full newline-terminated line.
+	if i := bytes.Index(data, separator); i >= 0 {
+		// We have a full separator-terminated line.
 		return i + len(separator), data[0:i], nil
 	}
 	// If we're at EOF, we have a final, non-terminated line. Return it.
@@ -70,4 +70,13 @@ func scanMorseEndLine(data []byte, atEOF bool) (advance int, token []byte, err e
 	}
 	// Request more data.
 	return 0, nil, nil
+}
+
+// Custom because we want to preserve \r, so that restored file was identical to original
+func scanTxtEndLine(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	return scanDelimitedLine(data, atEOF, []byte("\n"))
+}
+
+func scanMorseEndLine(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	return scanDelimitedLine(data, atEOF, []byte("//"))
 }
