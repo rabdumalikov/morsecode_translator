@@ -38,20 +38,5 @@ func (p *Decoder) Decode(morseCode string) string {
 		decodedWords = append(decodedWords, strings.Join(decodedChars, ""))
 	}
 
-	// Simple joining of decodedWords leads to issues with spaces
-	// Thus to avoid it custom joining needed
-	finalResult := ""
-	for i, dword := range decodedWords {
-		finalResult += dword
-
-		if dword == " " {
-			continue
-		}
-
-		if i+1 != len(decodedWords) {
-			finalResult += " "
-		}
-	}
-
-	return finalResult + "\n"
+	return strings.Join(decodedWords, " ")
 }

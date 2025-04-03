@@ -98,7 +98,7 @@ func (p *Converter) decodeMorseToText() error {
 			return err
 		}
 
-		text := p.decoder.Decode(line)
+		text := p.decoder.Decode(line) + "\n"
 		if err := p.writer.WriteLine(text); err != nil {
 			return err
 		}
@@ -118,7 +118,7 @@ func (p *Converter) encodeTextToMorse() error {
 			return err
 		}
 
-		morseCode := p.encoder.Encode(line)
+		morseCode := p.encoder.Encode(line) + "//"
 		if err := p.writer.WriteLine(morseCode); err != nil {
 			return err
 		}

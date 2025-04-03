@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -26,10 +27,13 @@ func CompareFiles(file1 *os.File, file2 *os.File) (ComparisonResult, error) {
 
 	lineNumber := 1
 	for scanner1.Scan() && scanner2.Scan() {
-		line1 := strings.ToLower(scanner1.Text())
-		line2 := strings.ToLower(scanner2.Text())
+		var whitespaceRegex = regexp.MustCompile(`\s{2,}`)
 
-		if len(line1) != len(line2) {
+		// Remove all whitespace characters from both lines
+		line1 := whitespaceRegex.ReplaceAllString(strings.TrimSpace(strings.ToLower(scanner1.Text())), " ")
+		line2 := whitespaceRegex.ReplaceAllString(strings.TrimSpace(strings.ToLower(scanner2.Text())), " ")
+
+		if len(line1) != len(line2) && line1 != line2 {
 			result.Differences = append(result.Differences, Diff{LineText1: line1, LineText2: line2, Line: lineNumber})
 		}
 

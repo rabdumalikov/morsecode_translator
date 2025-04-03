@@ -1,2 +1,6 @@
 *.txt
 *.morse
+*.py
+*.sh
+*.log
+books/

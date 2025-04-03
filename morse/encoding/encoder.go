@@ -13,15 +13,58 @@ func NewEncoder(mapper mapping.Mapper) *Encoder {
 	return &Encoder{mapper: mapper}
 }
 
+func splitBySpace(text string) []string {
+
+	var result []string
+	for i, char := range text {
+
+		if char == ' ' {
+			// space is separator if there is a symbol on the left or on the right
+			// checking left side
+
+			doLeftSidePresent := (i-1 >= 0)
+			nonSpaceOnTheLeft := false
+			if i-1 >= 0 && text[i-1] != ' ' {
+				nonSpaceOnTheLeft = true
+			}
+
+			// checking right side
+			doRightSidePresent := (i+1 < len(text))
+			nonSpaceOnTheRight := false
+			if i+1 < len(text) && text[i+1] != ' ' {
+				nonSpaceOnTheRight = true
+			}
+
+			isSpaceSeparator := (doLeftSidePresent && nonSpaceOnTheLeft) || (doLeftSidePresent && nonSpaceOnTheLeft && doRightSidePresent && nonSpaceOnTheRight)
+
+			if isSpaceSeparator {
+				result = append(result, string(""))
+			} else {
+				if len(result) == 0 {
+					result = append(result, string(char))
+				} else {
+					result[len(result)-1] += string(char)
+				}
+			}
+
+		} else {
+			if len(result) == 0 {
+				result = append(result, string(char))
+			} else {
+				result[len(result)-1] += string(char)
+			}
+		}
+
+	}
+	return result
+}
+
 func (p *Encoder) Encode(text string) string {
 	words := strings.Split(text, " ")
+
 	var encodedWords []string
 
 	for _, word := range words {
-		if word == "" {
-			// special handling for consequetive spaces
-			word = " "
-		}
 
 		var encodedWord []string
 
@@ -41,5 +84,5 @@ func (p *Encoder) Encode(text string) string {
 		}
 	}
 
-	return strings.Join(encodedWords, "/") + "//"
+	return strings.Join(encodedWords, "/")
 }
