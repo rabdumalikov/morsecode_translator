@@ -1,4 +1,4 @@
-package io
+package rw
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 )
 
 type Writer interface {
-	WriteLine(line string) error
+	WriteChunk(chunk string) error
 	Close() error
 }
 
@@ -14,9 +14,9 @@ type FileWriter struct {
 	file *os.File
 }
 
-func (p *FileWriter) WriteLine(line string) error {
+func (p *FileWriter) WriteChunk(chunk string) error {
 
-	_, err := fmt.Fprint(p.file, line)
+	_, err := fmt.Fprint(p.file, chunk)
 
 	return err
 }

@@ -9,80 +9,49 @@ type Encoder struct {
 	mapper mapping.Mapper
 }
 
+const (
+	AverageMorseCodeSize = 4 // symbols
+)
+
 func NewEncoder(mapper mapping.Mapper) *Encoder {
 	return &Encoder{mapper: mapper}
 }
 
-func splitBySpace(text string) []string {
-
-	var result []string
-	for i, char := range text {
-
-		if char == ' ' {
-			// space is separator if there is a symbol on the left or on the right
-			// checking left side
-
-			doLeftSidePresent := (i-1 >= 0)
-			nonSpaceOnTheLeft := false
-			if i-1 >= 0 && text[i-1] != ' ' {
-				nonSpaceOnTheLeft = true
-			}
-
-			// checking right side
-			doRightSidePresent := (i+1 < len(text))
-			nonSpaceOnTheRight := false
-			if i+1 < len(text) && text[i+1] != ' ' {
-				nonSpaceOnTheRight = true
-			}
-
-			isSpaceSeparator := (doLeftSidePresent && nonSpaceOnTheLeft) || (doLeftSidePresent && nonSpaceOnTheLeft && doRightSidePresent && nonSpaceOnTheRight)
-
-			if isSpaceSeparator {
-				result = append(result, string(""))
-			} else {
-				if len(result) == 0 {
-					result = append(result, string(char))
-				} else {
-					result[len(result)-1] += string(char)
-				}
-			}
-
-		} else {
-			if len(result) == 0 {
-				result = append(result, string(char))
-			} else {
-				result[len(result)-1] += string(char)
-			}
-		}
-
-	}
-	return result
-}
-
 func (p *Encoder) Encode(text string) string {
-	words := strings.Split(text, " ")
+	var sb strings.Builder
 
-	var encodedWords []string
+	// Pre-allocate buffer
+	sb.Grow(len(text) * AverageMorseCodeSize)
 
-	for _, word := range words {
+	needsCharSeparator := false
 
-		var encodedWord []string
-
-		for _, char := range word {
-
-			upperChar := strings.ToUpper(string(char))
-			value, ok := p.mapper.SymbolToMorse(upperChar)
-			if ok {
-				encodedWord = append(encodedWord, value)
-			} else {
-				encodedWord = append(encodedWord, string(char))
+	for _, r := range text {
+		if r == ' ' {
+			// If the previous character was not a space (i.e. we finished a word)
+			if needsCharSeparator {
+				sb.WriteByte('/')
+				needsCharSeparator = false
 			}
-		}
+			// Ignore consecutive spaces, only write one '/'
+		} else {
+			if needsCharSeparator {
+				sb.WriteByte(' ') // Write character separator before the next Morse symbol
+			}
 
-		if len(encodedWord) != 0 {
-			encodedWords = append(encodedWords, strings.Join(encodedWord, " "))
+			upperCharStr := strings.ToUpper(string(r))
+			morseCode, ok := p.mapper.SymbolToMorse(upperCharStr)
+
+			if ok {
+				sb.WriteString(morseCode)
+			} else {
+				sb.WriteRune(r)
+			}
+
+			needsCharSeparator = true
 		}
 	}
 
-	return strings.Join(encodedWords, "/")
+	encodedText := strings.TrimSuffix(sb.String(), "/")
+
+	return encodedText
 }

@@ -9,6 +9,11 @@ import (
 type Mapper interface {
 	SymbolToMorse(symbol string) (string, bool)
 	MorseToSymbol(morse string) (string, bool)
+	MorseWordSeparator() string
+	MorseCodeSeparator() string
+	MorseNewLineSeparator() string
+	ToTextSeparator(morseSeparator string) string
+	ToMorseSeparator(textSeparator string) string
 }
 
 type Mapping struct {
@@ -18,7 +23,7 @@ type Mapping struct {
 }
 
 func (p *Mapping) SymbolToMorse(symbol string) (string, bool) {
-	if len(p.symbolToMorseMapping) == 0 {
+	if p.symbolToMorseMapping == nil {
 		p.symbolToMorseMapping = createSymbolToMorseTable(p.mapping)
 	}
 
@@ -27,12 +32,46 @@ func (p *Mapping) SymbolToMorse(symbol string) (string, bool) {
 }
 
 func (p *Mapping) MorseToSymbol(morse string) (string, bool) {
-	if len(p.morseToSymbolMapping) == 0 {
+	if p.morseToSymbolMapping == nil {
 		p.morseToSymbolMapping = createMorseToSymbolTable(p.mapping)
 	}
 
 	value, ok := p.morseToSymbolMapping[morse]
 	return value, ok
+}
+
+func (p *Mapping) MorseWordSeparator() string {
+	return "/"
+}
+
+func (p *Mapping) MorseCodeSeparator() string {
+	return " "
+}
+
+func (p *Mapping) MorseNewLineSeparator() string {
+	return "//"
+}
+
+func (p *Mapping) ToTextSeparator(morseSeparator string) string {
+	switch morseSeparator {
+	case "/":
+		return " "
+	case "//":
+		return "\n"
+	default:
+		return ""
+	}
+}
+
+func (p *Mapping) ToMorseSeparator(textSeparator string) string {
+	switch textSeparator {
+	case " ":
+		return "/"
+	case "\n":
+		return "//"
+	default:
+		return ""
+	}
 }
 
 type rawMapping struct {
@@ -73,7 +112,7 @@ func createSymbolToMorseTable(m rawMapping) map[string]string {
 
 func createMorseToSymbolTable(m rawMapping) map[string]string {
 
-	reverseMap := func(m map[string]string) map[string]string {
+	reverseMapKeyValue := func(m map[string]string) map[string]string {
 
 		output := map[string]string{}
 
@@ -84,10 +123,10 @@ func createMorseToSymbolTable(m rawMapping) map[string]string {
 		return output
 	}
 
-	table := reverseMap(m.Letters)
-	maps.Copy(table, reverseMap(m.Accented_letters))
-	maps.Copy(table, reverseMap(m.Digits))
-	maps.Copy(table, reverseMap(m.Punctuations))
+	table := reverseMapKeyValue(m.Letters)
+	maps.Copy(table, reverseMapKeyValue(m.Accented_letters))
+	maps.Copy(table, reverseMapKeyValue(m.Digits))
+	maps.Copy(table, reverseMapKeyValue(m.Punctuations))
 
 	return table
 }
