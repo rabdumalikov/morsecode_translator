@@ -27,13 +27,13 @@ func main() {
 
 	converter, err := morse.New(*inputFile, *outputFile)
 	if err != nil {
-		fmt.Printf("Error creating converter: %v\n", err)
+		fmt.Printf("Error: creating converter: %v\n", err)
 		os.Exit(1)
 	}
 	defer converter.Close()
 
 	if err := converter.Process(); err != nil {
-		fmt.Printf("Error processing conversion: %v\n", err)
+		fmt.Printf("Error: processing conversion: %v\n", err)
 		os.Exit(1)
 	}
 }

@@ -1,36 +1,67 @@
 package encoding
 
 import (
+	"fmt"
 	"morse_converter/morse/mapping"
 	"strings"
 )
 
 type Encoder struct {
-	mapper mapping.Mapper
+	translator mapping.Translator
 }
 
-func NewEncoder(mapper mapping.Mapper) *Encoder {
-	return &Encoder{mapper: mapper}
+const (
+	AverageMorseCodeSize = 4 // Symbols
+)
+
+func NewEncoder(translator mapping.Translator) *Encoder {
+	return &Encoder{translator: translator}
 }
 
-func (p *Encoder) Encode(text string) string {
-	words := strings.Split(text, " ")
-	var encodedWords []string
-
-	for _, word := range words {
-		var encodedWord []string
-
-		for _, char := range word {
-			upperChar := strings.ToUpper(string(char))
-			value, ok := p.mapper.SymbolToMorse(upperChar)
-			if ok {
-				encodedWord = append(encodedWord, value)
-			} else {
-				encodedWord = append(encodedWord, string(char))
-			}
-		}
-		encodedWords = append(encodedWords, strings.Join(encodedWord, " "))
+// EncodeLine encodes a single text line into morse code.
+// It does not support multiple sentences or text new line symbols (i.e. "\n").
+// Characters that have no Morse code representation would be copied as-is.
+func (p *Encoder) EncodeLine(text string) (string, error) {
+	// Validate input
+	if strings.Contains(text, string(mapping.TextNewLine)) {
+		return "", fmt.Errorf("input contains unsupported new line '%c' separator", mapping.TextNewLine)
 	}
 
-	return strings.Join(encodedWords, "/") + "//"
+	var sb strings.Builder
+
+	// Pre-allocate buffer
+	sb.Grow(len(text) * AverageMorseCodeSize)
+
+	needsCharSeparator := false
+
+	for _, char := range text {
+		if char == rune(mapping.TextWordSeparator) {
+			// If the previous character was not a space (i.e. we finished a word)
+			if needsCharSeparator {
+				sb.WriteByte(mapping.MorseWordSeparator)
+				needsCharSeparator = false
+			}
+			// Ignore consecutive spaces, only write one '/'
+		} else {
+			if needsCharSeparator {
+				sb.WriteByte(mapping.TextWordSeparator) // Write character separator before the next Morse code
+			}
+
+			upperCharStr := strings.ToUpper(string(char))
+			morseCode, ok := p.translator.CharToMorse(upperCharStr)
+
+			if ok {
+				sb.WriteString(morseCode)
+			} else {
+				// Copy char that has no morse code representation as-is
+				sb.WriteRune(char)
+			}
+
+			needsCharSeparator = true
+		}
+	}
+
+	encodedText := strings.TrimSuffix(sb.String(), string(mapping.MorseWordSeparator))
+
+	return encodedText, nil
 }
