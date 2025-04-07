@@ -17,43 +17,48 @@ type Reader interface {
 }
 
 type FileReader struct {
-	file            *os.File
-	reader          *bufio.Reader
-	buffer          []byte
-	bufferRemainder []byte
+	file                *os.File
+	reader              *bufio.Reader
+	buffer              []byte
+	incompleteUtf8Chunk []byte
 }
 
-func (p *FileReader) ReadChunk() (string, error) {
+func (fr *FileReader) trimOffInvalidUtf8Tail(chunk []byte) []byte {
+	for !utf8.Valid(chunk) && len(chunk) > 0 {
+		invalidBytePosition := len(chunk)
+		fr.incompleteUtf8Chunk = append([]byte{chunk[invalidBytePosition-1]}, fr.incompleteUtf8Chunk...)
+		chunk = chunk[:invalidBytePosition-1]
+	}
 
-	n, err := p.reader.Read(p.buffer)
+	return chunk
+}
+
+func (fr *FileReader) ReadChunk() (string, error) {
+
+	n, err := fr.reader.Read(fr.buffer)
 	if err != nil {
 		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			if len(p.bufferRemainder) > 0 {
-				chunk := p.bufferRemainder
-				p.bufferRemainder = nil
-				return string(chunk), err
+			if len(fr.incompleteUtf8Chunk) > 0 {
+				// Discarding incomplete UTF-8 sequence at the end-of-file
+				fr.incompleteUtf8Chunk = nil
 			}
 		}
 
 		return "", err
 	}
 
-	chunk := append(p.bufferRemainder, p.buffer[:n]...)
+	chunk := append(fr.incompleteUtf8Chunk, fr.buffer[:n]...)
 
-	p.bufferRemainder = []byte{}
+	fr.incompleteUtf8Chunk = []byte{}
 
-	// Trim off invalid UTF-8 tail
-	for !utf8.Valid(chunk) && len(chunk) > 0 {
-		p.bufferRemainder = append([]byte{chunk[len(chunk)-1]}, p.bufferRemainder...)
-		chunk = chunk[:len(chunk)-1]
-	}
+	chunk = fr.trimOffInvalidUtf8Tail(chunk)
 
 	return string(chunk), nil
 }
 
-func (p *FileReader) Close() error {
-	if p.file != nil {
-		return p.file.Close()
+func (fr *FileReader) Close() error {
+	if fr.file != nil {
+		return fr.file.Close()
 	}
 
 	return nil

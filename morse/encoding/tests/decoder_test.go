@@ -7,12 +7,12 @@ import (
 )
 
 func TestDecode(t *testing.T) {
-	mapper, err := mapping.NewMapper("../../mapping/symbol2morse.json")
+	translator, err := mapping.NewTranslator("../../mapping/char2morse.json")
 	if err != nil {
 		t.Fatalf("Mapping creating failed with [%v]\n", err)
 		return
 	}
-	decoder := encoding.NewDecoder(mapper)
+	decoder := encoding.NewDecoder(translator)
 
 	tests := []struct {
 		morseCode string
@@ -23,9 +23,35 @@ func TestDecode(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := decoder.Decode(test.morseCode)
-		if result != test.expected { // Decode appends a newline
-			t.Errorf("Decode(%q) = [%q]; want [%q]", test.morseCode, result, test.expected+"\n")
+		result, _ := decoder.DecodeLine(test.morseCode)
+		if result != test.expected { // DecodeLine appends a newline
+			t.Errorf("DecodeLine(%q) = [%q]; want [%q]", test.morseCode, result, test.expected+"\n")
+		}
+	}
+}
+
+func TestIncorrectInputDecode(t *testing.T) {
+	translator, err := mapping.NewTranslator("../../mapping/char2morse.json")
+	if err != nil {
+		t.Fatalf("Mapping creating failed with [%v]\n", err)
+		return
+	}
+	decoder := encoding.NewDecoder(translator)
+
+	tests := []struct {
+		morseCode string
+		expected  string
+	}{
+		{".... . .-.. .-.. ---//", ""},
+		{"//.... . .-.. .-.. ---", ""},
+		{"////.... . .-.. .-.. ---", ""},
+		{".... . .-.. .-.. ---//.-- --- .-. .-.. -..", ""},
+	}
+
+	for _, test := range tests {
+		result, err := decoder.DecodeLine(test.morseCode)
+		if err == nil || result != "" {
+			t.Errorf("DecodeLine(%q) = err=[%v] result=[%q]; want non-empty error and empty result", test.morseCode, err, result)
 		}
 	}
 }

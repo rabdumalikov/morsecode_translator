@@ -25,7 +25,6 @@ type Converter struct {
 	transformationType TransformationType
 	encoder            encoding.Encoder
 	decoder            encoding.Decoder
-	mappings           mapping.Mapper
 }
 
 func New(inputFilename, outputFilename string) (*Converter, error) {
@@ -35,7 +34,7 @@ func New(inputFilename, outputFilename string) (*Converter, error) {
 		return nil, err
 	}
 
-	mappings, err := mapping.NewMapper("morse/mapping/symbol2morse.json")
+	mappings, err := mapping.NewTranslator("morse/mapping/char2morse.json")
 	if err != nil {
 		return nil, fmt.Errorf("loading morse mappings: %w", err)
 	}
@@ -45,12 +44,12 @@ func New(inputFilename, outputFilename string) (*Converter, error) {
 
 	reader, err := rw.NewFileReader(inputFilename)
 	if err != nil {
-		return nil, fmt.Errorf("creating reader: %w", err)
+		return nil, fmt.Errorf("creating reader for [%s]: %w", inputFilename, err)
 	}
 
 	writer, err := rw.NewFileWriter(outputFilename)
 	if err != nil {
-		return nil, fmt.Errorf("creating writer: %w", err)
+		return nil, fmt.Errorf("creating writer for [%s]: %w", outputFilename, err)
 	}
 
 	return &Converter{
@@ -59,7 +58,6 @@ func New(inputFilename, outputFilename string) (*Converter, error) {
 		transformationType: transformationType,
 		encoder:            *encoder,
 		decoder:            *decoder,
-		mappings:           mappings,
 	}, nil
 }
 
@@ -103,14 +101,13 @@ func (p *Converter) decodeMorseToText() error {
 		buffer += chunk
 
 		for {
-			morseSeparator := "//"
+			separator := mapping.NewMorseSeparator(mapping.NewLineSeparator)
 
-			sepPos := strings.Index(buffer, morseSeparator) // For line/sentence breaks
+			sepPos := strings.Index(buffer, separator.ToString()) // For line/sentence breaks
 			if sepPos == -1 {
 				// If no line separator, look for word separator
-
-				morseSeparator = "/"
-				sepPos = strings.LastIndex(buffer, morseSeparator)
+				separator = mapping.NewMorseSeparator(mapping.WordSeparator)
+				sepPos = strings.LastIndex(buffer, separator.ToString())
 
 				if sepPos == -1 {
 					break
@@ -124,9 +121,16 @@ func (p *Converter) decodeMorseToText() error {
 			}
 
 			morseSegment := buffer[:sepPos]
-			buffer = buffer[sepPos+len(morseSeparator):]
-			textSeparator := p.mappings.ToTextSeparator(morseSeparator)
-			if err := p.writer.WriteChunk(p.decoder.Decode(morseSegment) + textSeparator); err != nil {
+			buffer = buffer[sepPos+len(separator.ToString()):]
+
+			textSeparator := separator.ToText().ToString()
+
+			textOutput, decodeLineErr := p.decoder.DecodeLine(morseSegment)
+
+			if decodeLineErr != nil {
+				return decodeLineErr
+			}
+			if err := p.writer.WriteChunk(textOutput + textSeparator); err != nil {
 				return err
 			}
 		}
@@ -134,7 +138,13 @@ func (p *Converter) decodeMorseToText() error {
 		if err == io.EOF {
 			// Process any remaining data
 			if buffer != "" {
-				if err := p.writer.WriteChunk(p.decoder.Decode(buffer)); err != nil {
+				textOutput, decodeLineErr := p.decoder.DecodeLine(buffer)
+
+				if decodeLineErr != nil {
+					return decodeLineErr
+				}
+
+				if err := p.writer.WriteChunk(textOutput); err != nil {
 					return err
 				}
 			}
@@ -157,23 +167,29 @@ func (p *Converter) encodeTextToMorse() error {
 		buffer += chunk
 
 		for {
-			textSeparator := "\n"
-			sepPos := strings.Index(buffer, textSeparator) // For line/sentence breaks
+			separator := mapping.NewTextSeparator(mapping.NewLineSeparator)
+
+			sepPos := strings.Index(buffer, separator.ToString()) // For line/sentence breaks
 			if sepPos == -1 {
 				// If no line separator, look for word separator
-				textSeparator = " "
-				sepPos = strings.LastIndex(buffer, textSeparator)
+				separator = mapping.NewTextSeparator(mapping.WordSeparator)
+				sepPos = strings.LastIndex(buffer, separator.ToString())
 
 				if sepPos == -1 {
 					break
 				}
 			}
 
-			subbuffer := buffer[:sepPos]
-			buffer = buffer[sepPos+len(textSeparator):] // Remove processed chunk plus space
+			textSegment := buffer[:sepPos]
+			buffer = buffer[sepPos+len(separator.ToString()):] // Remove processed chunk plus space
+			morseSeparator := separator.ToMorse().ToString()
 
-			morseCode := p.encoder.Encode(subbuffer) + p.mappings.ToMorseSeparator(textSeparator)
-			if err := p.writer.WriteChunk(morseCode); err != nil {
+			morseOutput, encodeLineErr := p.encoder.EncodeLine(textSegment)
+			if encodeLineErr != nil {
+				return encodeLineErr
+			}
+
+			if err := p.writer.WriteChunk(morseOutput + morseSeparator); err != nil {
 				return err
 			}
 		}
@@ -181,8 +197,13 @@ func (p *Converter) encodeTextToMorse() error {
 		if err == io.EOF {
 			// Process any remaining data
 			if buffer != "" {
-				morseCode := p.encoder.Encode(buffer)
-				if err := p.writer.WriteChunk(morseCode); err != nil {
+				morseOutput, encodeLineErr := p.encoder.EncodeLine(buffer)
+
+				if encodeLineErr != nil {
+					return encodeLineErr
+				}
+
+				if err := p.writer.WriteChunk(morseOutput); err != nil {
 					return err
 				}
 			}

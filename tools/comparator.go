@@ -63,8 +63,6 @@ func CompareFilesInChunks(reader1 rw.Reader, reader2 rw.Reader) (ComparisonResul
 
 		if chunk1ToCompare != chunk2ToCompare {
 			result.Differences = append(result.Differences, Diff{LineText1: chunk1ToCompare, LineText2: chunk2ToCompare, Line: lineNumber})
-			// TODO remove (for faster debug usages)
-			break
 		}
 
 		if err1 == io.EOF || err2 == io.EOF {

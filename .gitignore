@@ -1,6 +1,5 @@
-*.txt
 *.morse
 *.py
 *.sh
 *.log
-books/
+big_books/

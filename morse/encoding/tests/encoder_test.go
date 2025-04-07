@@ -7,12 +7,12 @@ import (
 )
 
 func TestEncode(t *testing.T) {
-	mapper, err := mapping.NewMapper("../../mapping/symbol2morse.json")
+	translator, err := mapping.NewTranslator("../../mapping/char2morse.json")
 	if err != nil {
 		t.Fatalf("Mapping creation failed with [%v]\n", err)
 		return
 	}
-	encoder := encoding.NewEncoder(mapper)
+	encoder := encoding.NewEncoder(translator)
 
 	tests := []struct {
 		text     string
@@ -31,9 +31,37 @@ func TestEncode(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := encoder.Encode(test.text)
+		result, _ := encoder.EncodeLine(test.text)
 		if result != test.expected {
-			t.Errorf("Encode(%q) = [%q]; want [%q]", test.text, result, test.expected)
+			t.Errorf("EncodeLine(%q) = [%q]; want [%q]", test.text, result, test.expected)
+		}
+	}
+}
+
+func TestIncorrectInputEncode(t *testing.T) {
+	translator, err := mapping.NewTranslator("../../mapping/char2morse.json")
+	if err != nil {
+		t.Fatalf("Mapping creation failed with [%v]\n", err)
+		return
+	}
+	encoder := encoding.NewEncoder(translator)
+
+	tests := []struct {
+		text     string
+		expected string
+	}{
+		{"HELLO\n", ".... . .-.. .-.. ---"},
+		{"WORLD\n", ".-- --- .-. .-.. -.."},
+		{"HELLO\nWORLD", ".... . .-.. .-.. ---/.-- --- .-. .-.. -.."},
+		{"A'nA\nA\nA", ".-/.-/.-/.-"},
+		{"\n\n\nHello", ".... . .-.. .-.. ---"},
+		{"Hello\r\n", ".... . .-.. .-.. ---"},
+	}
+
+	for _, test := range tests {
+		result, err := encoder.EncodeLine(test.text)
+		if err == nil || result != "" {
+			t.Errorf("EncodeLine(%q) = err=[%v] result=[%q]; want non-empty error and empty result", test.text, err, result)
 		}
 	}
 }

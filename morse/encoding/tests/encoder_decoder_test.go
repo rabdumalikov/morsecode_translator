@@ -8,13 +8,13 @@ import (
 )
 
 func TestEncodeDecoder(t *testing.T) {
-	mapper, err := mapping.NewMapper("../../mapping/symbol2morse.json")
+	translator, err := mapping.NewTranslator("../../mapping/char2morse.json")
 	if err != nil {
 		t.Fatalf("Mapping creation failed with [%v]\n", err)
 		return
 	}
-	encoder := encoding.NewEncoder(mapper)
-	decoder := encoding.NewDecoder(mapper)
+	encoder := encoding.NewEncoder(translator)
+	decoder := encoding.NewDecoder(translator)
 
 	tests := []struct {
 		text     string
@@ -35,11 +35,11 @@ func TestEncodeDecoder(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := encoder.Encode(test.text)
-		result = decoder.Decode(result)
+		result, _ := encoder.EncodeLine(test.text)
+		result, _ = decoder.DecodeLine(result)
 		result = strings.ToLower(result)
 		if result != strings.ToLower(test.expected) {
-			t.Errorf("Encode(%q) = [%q]; want [%q]", test.text, result, strings.ToLower(test.expected))
+			t.Errorf("EncodeLine(%q) = [%q]; want [%q]", test.text, result, strings.ToLower(test.expected))
 		}
 	}
 }
